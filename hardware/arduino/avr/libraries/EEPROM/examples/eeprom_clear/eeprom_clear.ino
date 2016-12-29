@@ -11,9 +11,10 @@
 #include <EEPROM.h>
 
 void setup() {
+
   // initialize the LED pin as an output.
   pinMode(13, OUTPUT);
-  
+
   /***
     Iterate through each byte of the EEPROM storage.
 
@@ -27,7 +28,14 @@ void setup() {
   ***/
 
   for (int i = 0 ; i < EEPROM.length() ; i++) {
-    EEPROM.write(i, 0);
+
+    /*
+        Use the update method to prevent un-necessary wear on already cleared cells.
+        The update method checks to see if the current cell is different before writing.
+        You could easily replace this with EEPROM.write(i, 0); or even EEPROM.put(i, 0);
+    */
+
+    EEPROM.update(i, 0);
   }
 
   // turn the LED on when we're done

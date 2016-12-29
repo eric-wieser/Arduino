@@ -17,10 +17,12 @@
 
 #include <EEPROM.h>
 
+//EEPROM address to start reading from. This does not need to be global, but in this example, it is shared between two different functions.
+int eeAddress = 0;
+
 void setup() {
 
   float f = 0.00f;   //Variable to store data read from EEPROM.
-  int eeAddress = 0; //EEPROM address to start reading from
 
   Serial.begin(9600);
   while (!Serial) {
@@ -52,7 +54,7 @@ struct MyObject {
 };
 
 void secondTest() {
-  int eeAddress = sizeof(float); //Move address to the next byte after float 'f'.
+  eeAddress += sizeof(float); //Move address to the next byte after float 'f'.
 
   MyObject customVar; //Variable to store custom object read from EEPROM.
   EEPROM.get(eeAddress, customVar);
