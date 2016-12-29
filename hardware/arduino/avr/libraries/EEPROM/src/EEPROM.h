@@ -25,6 +25,8 @@
 #include <avr/eeprom.h>
 #include <avr/io.h>
 
+struct EEPtr; //Forward declaration for EERef::opreator&
+
 /***
     EERef class.
     
@@ -41,6 +43,8 @@ struct EERef{
     //Access/read members.
     uint8_t operator*() const            { return eeprom_read_byte( (uint8_t*) index ); }
     operator uint8_t() const             { return **this; }
+
+	EEPtr operator&() const;             //Defined below EEPtr
     
     //Assignment/write members.
     EERef &operator=( const EERef &ref ) { return *this = *ref; }
@@ -88,18 +92,22 @@ struct EEPtr{
 
     template< typename T > EEPtr( T *ptr ) : index( (int) ptr ) {}    
     EEPtr( const int index ) : index( index )                   {}
-        
+
+	//Pointer read/write.
     operator int() const                { return index; }
     EEPtr &operator=( int in )          { return index = in, *this; }
 	EERef operator[]( int idx )         { return index + idx; }
     
     //Iterator functionality.
     bool operator!=( const EEPtr &ptr ) { return index != ptr.index; }
+    EEPtr& operator+=( int idx )        { return index += idx, *this; }
+    EEPtr& operator-=( int idx )        { return index -= idx, *this; }
 
     //Dreference & member access.
 	EERef operator*()                   { return index; }
-    
-    /** Prefix & Postfix increment/decrement **/
+    EERef *operator->()                 { return (EERef*) this; }
+
+    // Prefix & Postfix increment/decrement
     EEPtr& operator++()                 { return ++index, *this; }
     EEPtr& operator--()                 { return --index, *this; }
     EEPtr operator++ (int)              { return index++; }
@@ -107,6 +115,8 @@ struct EEPtr{
 
     int index; //Index of current EEPROM cell.
 };
+
+inline EEPtr EERef::operator&() const { return index; } //Deferred definition till EEPtr becomes available.
 
 /***
     EEPROMClass class.
