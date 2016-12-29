@@ -256,6 +256,12 @@ class EEPROMClass{
 			return t;
 		}
 
+		//EEMEM helper: This function retrieves an object which uses the same type as the provided pointer.
+		template< typename T > T get( T *t ){
+			T result;
+			return get( t, result );
+		}
+
 		template< typename T > const T &put( EEPtr ptr, const T &t ){
 			const uint8_t *src = (const uint8_t*) &t;
 			for( int count = sizeof(T) ; count ; --count, ++ptr ) (*ptr).update( *src++ );
