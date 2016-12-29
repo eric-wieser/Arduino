@@ -26,6 +26,7 @@
 #include <avr/io.h>
 
 struct EEPtr; //Forward declaration for EERef::opreator&
+struct EEBit; //Forward declaration for EERef::opreator[]
 
 /***
     EERef class.
@@ -45,6 +46,11 @@ struct EERef{
     operator uint8_t() const             { return **this; }
 
 	EEPtr operator&() const;             //Defined below EEPtr
+
+    //Bit access members, defined below EEBit declaration.
+    EEBit operator[]( const int bidx );
+    EEBit begin();
+    EEBit end();
     
     //Assignment/write members.
     EERef &operator=( const EERef &ref ) { return *this = *ref; }
@@ -62,11 +68,11 @@ struct EERef{
     
     EERef &update( uint8_t in )          { return  in != *this ? *this = in : *this; }
     
-    /** Prefix increment/decrement **/
+    // Prefix increment/decrement
     EERef& operator++()                  { return *this += 1; }
     EERef& operator--()                  { return *this -= 1; }
     
-    /** Postfix increment/decrement **/
+    // Postfix increment/decrement
     uint8_t operator++ (int){ 
         uint8_t ret = **this;
         return ++(*this), ret;
@@ -79,6 +85,80 @@ struct EERef{
     
     int index; //Index of current EEPROM cell.
 };
+
+
+/***
+    EEBit class.
+    This object is a reference object similar to EERef, however it references
+    only a single bit. Its function mimics a bool type.
+***/
+
+struct EEBit{
+
+    //Constructor, use by passing in index of EEPROM byte, then index of bit to read.
+    EEBit( int index, uint8_t bidx )
+        : ref( index ), mask( 0x01 << bidx ) {}
+
+    //Modifier functions.
+    EEBit &setIndex( uint8_t bidx )          { return mask = (0x01 << bidx), *this; }
+    EEBit &set()                             { return *this = true; }
+    EEBit &clear()                           { return *this = false; }
+
+    //Read/write functions.
+    operator bool() const                    { return ref & mask; }
+    EEBit &operator =( const EEBit &copy )   { return *this = ( const bool ) copy; }
+
+    EEBit &operator =( const bool &copy ){
+        if( copy )  ref |= mask;
+        else  ref &= ~mask;
+        return *this;
+    }
+
+    //Iterator functionality.
+    EEBit& operator*()                  { return *this; }
+    bool operator==( const EEBit &bit ) { return (mask == bit.mask) && (ref.index == bit.ref.index); }
+    bool operator!=( const EEBit &bit ) { return !(*this == bit); }
+
+    //Prefix & Postfix increment/decrement
+    EEBit& operator++(){
+        if( mask & 0x80 ){
+            ++ref.index;
+            mask = 0x01;
+        }else{
+            mask <<= 1;
+        }
+        return *this;
+    }
+
+    EEBit& operator--(){
+        if( mask & 0x01 ){
+            --ref.index;
+            mask = 0x80;
+        }else{
+            mask >>= 1;
+        }
+        return *this;
+    }
+
+    EEBit operator++ (int) {
+        EEBit cpy = *this;
+        return ++(*this), cpy;
+    }
+
+    EEBit operator-- (int) {
+        EEBit cpy = *this;
+        return --(*this), cpy;
+    }
+
+    EERef ref;     //Reference to EEPROM cell.
+    uint8_t mask;  //Mask of bit to read/write.
+};
+
+//Deferred definition till EEBit becomes available.
+inline EEBit EERef::operator[]( const int bidx ) { return EEBit( index, bidx ); }
+inline EEBit EERef::begin()                      { return EEBit( index, 0 ); }
+inline EEBit EERef::end()                        { return EEBit( index + 1, 0 ); }
+
 
 /***
     EEPtr class.
@@ -138,6 +218,10 @@ struct EEPROMClass{
     EEPtr begin()                        { return 0x00; }
     EEPtr end()                          { return length(); } //Standards requires this to be the item after the last valid entry. The returned pointer is invalid.
     uint16_t length()                    { return E2END + 1; }
+
+    //Bit access methods.
+    EEBit readBit( EERef ref, uint8_t bidx )                 { return ref[ bidx ]; }
+    void writeBit( EERef ref, uint8_t bidx, const bool val ) { ref[ bidx ] = val; }
 
     //A helper function for the builtin eeprom_is_ready macro.
     bool ready()                         { return eeprom_is_ready(); }
