@@ -128,7 +128,10 @@ struct EEPROMClass{
     EEPtr begin()                        { return 0x00; }
     EEPtr end()                          { return length(); } //Standards requires this to be the item after the last valid entry. The returned pointer is invalid.
     uint16_t length()                    { return E2END + 1; }
-    
+
+    //A helper function for the builtin eeprom_is_ready macro.
+    bool ready()                         { return eeprom_is_ready(); }
+
     //Functionality to 'get' and 'put' objects to and from EEPROM.
 	template< typename T > T &get( EEPtr ptr, T &t ){
 		uint8_t *dest = (uint8_t*) &t;
