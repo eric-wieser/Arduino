@@ -206,38 +206,61 @@ inline EEPtr EERef::operator&() const { return index; } //Deferred definition ti
     This class is also 100% backwards compatible with earlier Arduino core releases.
 ***/
 
-struct EEPROMClass{
+class EEPROMClass{
+	protected:
 
-    //Basic user access methods.	
-    EERef operator[]( EERef ref )         { return ref; }
-    EERef read( EERef ref )               { return ref; }
-    void write( EERef ref, uint8_t val )  { ref = val; }
-    void update( EERef ref, uint8_t val ) { ref.update( val ); }	
-    
-    //STL and C++11 iteration capability.
-    EEPtr begin()                        { return 0x00; }
-    EEPtr end()                          { return length(); } //Standards requires this to be the item after the last valid entry. The returned pointer is invalid.
-    uint16_t length()                    { return E2END + 1; }
+		/***
+			EEIterator interface.
+			This interface allows creating customized ranges within
+			the EEPROM. Essentially intended for use with ranged for
+			loops, or STL style iteration on subsections of the EEPROM.
+		***/
 
-    //Bit access methods.
-    EEBit readBit( EERef ref, uint8_t bidx )                 { return ref[ bidx ]; }
-    void writeBit( EERef ref, uint8_t bidx, const bool val ) { ref[ bidx ] = val; }
+		struct EEIterator{
+			EEIterator( EEPtr _start, int _length ) : start(_start), length(_length) {}
+			EEPtr begin() { return start; }
+			EEPtr end()   { return start + length; }
+			EEPtr start;
+			int length;
+		};
 
-    //A helper function for the builtin eeprom_is_ready macro.
-    bool ready()                         { return eeprom_is_ready(); }
+	public:
 
-    //Functionality to 'get' and 'put' objects to and from EEPROM.
-	template< typename T > T &get( EEPtr ptr, T &t ){
-		uint8_t *dest = (uint8_t*) &t;
-		for( int count = sizeof(T) ; count ; --count, ++ptr ) *dest++ = *ptr;
-		return t;
-	}
-    
-	template< typename T > const T &put( EEPtr ptr, const T &t ){
-		const uint8_t *src = (const uint8_t*) &t;
-		for( int count = sizeof(T) ; count ; --count, ++ptr ) (*ptr).update( *src++ );
-		return t;
-	}	
+		//Basic user access methods.
+		EERef operator[]( EERef ref )         { return ref; }
+		EERef read( EERef ref )               { return ref; }
+		void write( EERef ref, uint8_t val )  { ref = val; }
+		void update( EERef ref, uint8_t val ) { ref.update( val ); }
+
+		//STL and C++11 iteration capability.
+		EEPtr begin()                        { return 0x00; }
+		EEPtr end()                          { return length(); } //Standards requires this to be the item after the last valid entry. The returned pointer is invalid.
+		uint16_t length()                    { return E2END + 1; }
+
+		//Extended iteration functionality (arbitrary regions).
+		//These can make serialized reading/writing easy.
+		template< typename T > EEIterator iterate( T *t ) { return EEIterator( t, sizeof(T) ); }
+		EEIterator iterate( EEPtr ptr, int length )       { return EEIterator( ptr, length ); }
+
+		//Bit access methods.
+		EEBit readBit( EERef ref, uint8_t bidx )                 { return ref[ bidx ]; }
+		void writeBit( EERef ref, uint8_t bidx, const bool val ) { ref[ bidx ] = val; }
+
+		//A helper function for the builtin eeprom_is_ready macro.
+		bool ready()                         { return eeprom_is_ready(); }
+
+		//Functionality to 'get' and 'put' objects to and from EEPROM.
+		template< typename T > T &get( EEPtr ptr, T &t ){
+			uint8_t *dest = (uint8_t*) &t;
+			for( int count = sizeof(T) ; count ; --count, ++ptr ) *dest++ = *ptr;
+			return t;
+		}
+
+		template< typename T > const T &put( EEPtr ptr, const T &t ){
+			const uint8_t *src = (const uint8_t*) &t;
+			for( int count = sizeof(T) ; count ; --count, ++ptr ) (*ptr).update( *src++ );
+			return t;
+		}
 };
 
 static EEPROMClass EEPROM;
