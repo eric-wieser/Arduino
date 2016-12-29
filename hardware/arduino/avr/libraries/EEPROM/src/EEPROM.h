@@ -249,24 +249,48 @@ class EEPROMClass{
 		//A helper function for the builtin eeprom_is_ready macro.
 		bool ready()                         { return eeprom_is_ready(); }
 
-		//Functionality to 'get' and 'put' objects to and from EEPROM.
+		
+		/* 
+			Functionality to 'get' and 'put' objects to and from EEPROM.
+			All put() functions use the update() method of writing to the EEPROM
+		*/
+		
+		//Generic get() function, for any type of data.
 		template< typename T > T &get( EEPtr ptr, T &t ){
 			uint8_t *dest = (uint8_t*) &t;
 			for( int count = sizeof(T) ; count ; --count, ++ptr ) *dest++ = *ptr;
 			return t;
 		}
 
-		//EEMEM helper: This function retrieves an object which uses the same type as the provided pointer.
+		//EEMEM helper: This function retrieves an object which uses the same type as the provided object.
+		template< typename T > T get( T &t ){ return get(&t); }
 		template< typename T > T get( T *t ){
 			T result;
 			return get( t, result );
 		}
+		
+		//Overload get() function to deal with the String class.
+		String &get( EEPtr ptr, String &t ){
+			for( auto el : iterate(ptr, length() - ptr)){ 
+				if(el) t += char(el);
+				else break;
+			}
+			return t;
+		}
 
+		//Generic put() function, for any type of data.
 		template< typename T > const T &put( EEPtr ptr, const T &t ){
 			const uint8_t *src = (const uint8_t*) &t;
 			for( int count = sizeof(T) ; count ; --count, ++ptr ) (*ptr).update( *src++ );
 			return t;
 		}
+		
+		//Overload of put() function to deal with the String class.
+		const String &put( EEPtr ptr, const String &t ){
+			uint16_t idx = 0;
+			for(auto el : iterate(ptr, t.length() + 1)) el.update(t[idx++]); //Read past length() as String::operator[] returns 0 on an out of bounds read (for null terminator).
+			return t;
+		}		
 };
 
 static EEPROMClass EEPROM;
